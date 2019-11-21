@@ -1,0 +1,7 @@
+pattern: ^http[s]?://www.luisaviaroma.com/.*
+domain: luisaviaroma.com
+name: luisaviaroma_test
+rules:
+  - name: title
+    xPath: //title/text()
+    output_format: TEXT
