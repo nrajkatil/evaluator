@@ -1,10 +1,12 @@
 package evaluator;
 
 import static picocli.CommandLine.Command;
+import static picocli.CommandLine.Option;
 import static picocli.CommandLine.Parameters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import net.sf.saxon.functions.ConstantFunction;
 import net.sf.saxon.lib.Feature;
 import net.sf.saxon.s9api.Processor;
 import net.sf.saxon.s9api.SaxonApiException;
@@ -39,7 +41,7 @@ public class App implements Callable<Void> {
   private static final Processor processor = new Processor(false);
 
   @Parameters(index = "0", description = "File containing sample URLs. One URL per line")
-  private File urlFile;
+  private File inputFile;
 
   @Parameters(index = "1", description = "Template file")
   private File templateFile;
@@ -51,7 +53,12 @@ public class App implements Callable<Void> {
       defaultValue = "product")
   private String type;
 
+  @Option(names = "raw_html", description = "Use downloaded Raw Html File", defaultValue = "False")
+  private boolean use_raw_html;
+
   private HTMLCache htmlCache = null;
+  private final String PINTEREST_USER_AGENT = "Mozilla/5.0 (compatible; Pinterestbot/1.0; +http://www.pinterest.com/bot.html)";
+  private final String BROWSER_USER_AGENT = "Mozilla/5.0";
 
   public static void main(String[] args) {
     CommandLine.call(new App(), args);
@@ -68,24 +75,49 @@ public class App implements Callable<Void> {
         template.rules.stream().map(rule -> rule.name).collect(Collectors.toList());
     rulesNames.add(0, "url");
     System.out.println(String.join("\t", rulesNames));
-    try (Stream<String> lines = Files.lines(urlFile.toPath())) {
-      lines.forEachOrdered(line -> {
-        if (!line.trim().isEmpty()) {
-          XdmNode node = fetchDocument(line);
-          if (node != null) {
-            List<String> results = applyTemplate(line, template, node);
-            if (results != null) {
-              System.out.println(String.join("\t", results));
-            } else {
-              System.err.println(
-                  "URL " + line + " did not match template url regex: " + template.pattern);
+
+    if (!use_raw_html) {
+      try (Stream<String> lines = Files.lines(inputFile.toPath())) {
+        lines.forEachOrdered(line -> {
+          if (!line.trim().isEmpty()) {
+            XdmNode node = fetchDocument(line);
+            if (node != null) {
+              List<String> results = applyTemplate(line, template, node);
+              if (results != null) {
+                System.out.println(String.join("\t", results));
+              } else {
+                System.err.println(
+                        "URL " + line + " did not match template url regex: " + template.pattern);
+              }
             }
           }
-        }
-      });
+        });
+      }
     }
+
+    if (use_raw_html) {
+      byte[] htmlBytes = Files.readAllBytes(inputFile.toPath());
+      try {
+        XdmNode node = buildNode(htmlBytes);
+        if (node != null) {
+          List<String> results = applyTemplate(null, template, node);
+          if (results != null) {
+            System.out.println(String.join("\t", results));
+          }
+        }
+      } catch (SaxonApiException e) {
+        System.err.println("Failed to parse HTML from file. "
+                + e.getMessage());
+        return null;
+      }
+    }
+
     return null;
   }
+
+
+
+
 
   public static XdmNode buildNode(byte[] html) throws SaxonApiException {
     processor.setConfigurationProperty(
@@ -108,7 +140,7 @@ public class App implements Callable<Void> {
 
     if (html == null) {
       try {
-        html = innerFetch(url, true);
+        html = innerFetch(url, true, true);
       } catch (MalformedURLException e) {
         System.err.println("URL: " + url + " is not a valid URL: " + e.getMessage());
         return null;
@@ -118,13 +150,22 @@ public class App implements Callable<Void> {
       }
       if (html == null) {
         try {
-          html = innerFetch(url, false);
+          html = innerFetch(url, false, true);
           System.err.println("Successfully fetched HTML from " + url
               + " with certificate validation off");
         } catch (IOException e) {
           System.err.println("Failed to fetch HTML (certificate validation off) from " + url + " : "
               + e.getMessage());
-          return null;
+        }
+      }
+      if (html == null) {
+        try {
+          html = innerFetch(url, false, false);
+          System.err.println("Successfully fetched HTML from " + url
+                  + " with None Pinterest User Agent");
+        } catch (IOException e) {
+          System.err.println("Failed to fetch HTML (certificate validation off) with None Pinterest User Agent from " + url + " : "
+                  + e.getMessage());
         }
       }
     }
@@ -138,10 +179,14 @@ public class App implements Callable<Void> {
     }
   }
 
-  private byte[] innerFetch(String url, boolean validateCertificates) throws IOException {
+  private byte[] innerFetch(String url, boolean validateCertificates, boolean usePinterestUserAgent) throws IOException {
+    String userAgent = PINTEREST_USER_AGENT;
+    if (!usePinterestUserAgent) {
+      userAgent = BROWSER_USER_AGENT;
+    }
     Connection.Response response = Jsoup.connect(url)
         .userAgent(
-            "Mozilla/5.0 (compatible; Pinterestbot/1.0; +http://www.pinterest.com/bot.html)")
+            userAgent)
         .validateTLSCertificates(validateCertificates)
         .method(Connection.Method.GET)
         .execute();
@@ -155,7 +200,8 @@ public class App implements Callable<Void> {
   List<String> applyTemplate(String url, Template template, XdmNode node) {
     List<String> results = null;
 
-    if (template.urlMatch.test(url)) {
+
+    if (url == null || template.urlMatch.test(url)) {
       results = new ArrayList<>();
       results.add(url);
       for (Rule rule : template.rules) {

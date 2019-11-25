@@ -47,5 +47,17 @@ url	publish_datetime
 https://therighthairstyles.com/haircut-terms/	May 29, 2019
 ````
 
+If the above failed because the request timeout or access denied. Then do the following:
+
+Open a test link in browser, download raw html into a local file (e.g. test.html)
+run with raw_html option on:
+./bin/evaluator raw_html test.html ../../../src/test/resources/test_template.yaml ~/HTMLCacheDir product
+
+which should output
+````
+url	title
+null	Men's Monkey Man/2™ Jacket
+````
+
 Note that the HTML contents of each URL are cached on disk, in the folder specified by the 3rd parameter (~/HTMLCacheDir). 
 When the above command is repeated, the execution is noticeably faster, because of the cache hit.
