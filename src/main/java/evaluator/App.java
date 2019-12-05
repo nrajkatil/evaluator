@@ -170,6 +170,11 @@ public class App implements Callable<Void> {
       }
     }
 
+    if (html == null) {
+      System.err.println("Failed to fetch HTML from " + url);
+      return null;
+    }
+
     try {
       return buildNode(html);
     } catch (SaxonApiException e) {
