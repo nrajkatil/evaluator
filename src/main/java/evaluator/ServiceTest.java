@@ -2,15 +2,27 @@ package evaluator;
 
 import net.sf.saxon.s9api.XdmNode;
 
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ServiceTest {
     public static void main(String[] args) throws IOException {
+
+        testJS();
+        System.exit(0);
         App app = new App();
         System.out.println("Working Directory = " +
                 System.getProperty("user.dir"));
@@ -43,6 +55,26 @@ public class ServiceTest {
                 }
             });
         } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public static void testJS() {
+        String link = "https://www.neimanmarcus.com/";
+        ProcessBuilder pb = new ProcessBuilder("node", "src/main/node/index.js", link);
+        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+        try {
+            Process p = pb.start();
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            StringJoiner sj = new StringJoiner(System.getProperty("line.separator"));
+            reader.lines().iterator().forEachRemaining(sj::add);
+            String result = sj.toString();
+            System.out.println(result);
+            p.waitFor();
+            p.destroy();
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
