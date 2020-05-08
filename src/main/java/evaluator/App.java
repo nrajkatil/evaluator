@@ -266,7 +266,7 @@ public class App implements Callable<Void> {
         Template template = mapper.readValue(templateFile, Template.class);
         XPathCompiler compiler = processor.newXPathCompiler();
         compiler.declareNamespace("", "http://www.w3.org/1999/xhtml");
-        compiler.setLanguageVersion("2.0");
+        compiler.setLanguageVersion("3.1");
         template.validateAndInitialize(compiler, type);
         return template;
     }
