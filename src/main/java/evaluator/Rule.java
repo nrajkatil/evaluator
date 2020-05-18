@@ -22,7 +22,13 @@ public class Rule {
     VALID_GENERAL_NAMES = ImmutableSet.of("publish_datetime");
     VALID_PRODUCT_NAMES = ImmutableSet.of("title", "description", "price", "low_price",
         "currency", "availability", "brand", "image_urls", "color", "size", "material",
-        "fit", "gender", "category");
+        "fit", "gender", "category", "manufacturer", "additional_image_links", "itemCondition",
+            "list_price", "free_shippping_limit", "shipping_length", "shipping_earliest_arrival_date",
+            "shipping_latest_arrival_date", "shipping_geo", "shipping_method", "shipping_policy",
+            "return_length", "return_policy", "dimension", "size_type", "size_system", "sale_label",
+            "scarcity_label", "free_shipping_label", "free_return_label", "best_seller_label", "new_arrival_label",
+            "avg_review_rating", "avg_num_rating", "review_link", "review_low_rating", "review_high_rating", "item_id",
+            "item_set_id", "gtin", "upc", "mpn", "has_variants", "variant_skus", "promo_code");
     VALID_TYPES = ImmutableMap.of(
         "general", VALID_GENERAL_NAMES,
         "product", VALID_PRODUCT_NAMES
