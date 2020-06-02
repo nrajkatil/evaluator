@@ -98,20 +98,21 @@ public class App implements Callable<Void> {
         }
 
         if (use_raw_html) {
-            byte[] htmlBytes = Files.readAllBytes(inputFile.toPath());
-            try {
-                XdmNode node = buildNode(htmlBytes);
-                if (node != null) {
-                    List<String> results = applyTemplate(null, template, node);
-                    if (results != null) {
-                        System.out.println(String.join("\t", results));
+            if (inputFile.isDirectory()) {
+                //System.out.println(inputFile.getName() + " is a directory containing the files: \n");
+                File[] HTMLfiles = inputFile.listFiles();
+                for (File file: HTMLfiles) {
+                    if (file.isDirectory()) {
+                        System.out.println("Skipping directory " + file.getName());
+                    } else {                
+                        //System.out.println(file.getCanonicalPath());
+                        processRawHTML(file, template);                    
                     }
-                }
-            } catch (SaxonApiException e) {
-                System.err.println("Failed to parse HTML from file. "
-                        + e.getMessage());
-                return null;
-            }
+                }                
+            } else if (inputFile.isFile()) {
+                //System.out.println(inputFile.getName() + " is a file\n");
+                processRawHTML(inputFile, template);
+            }            
         }
 
         return null;
@@ -269,5 +270,26 @@ public class App implements Callable<Void> {
         compiler.setLanguageVersion("3.1");
         template.validateAndInitialize(compiler, type);
         return template;
+    }
+
+
+    private void processRawHTML(File htmlFile, Template template) throws IOException
+    {
+        byte[] htmlBytes = Files.readAllBytes(htmlFile.toPath());
+        try {
+            XdmNode node = buildNode(htmlBytes);
+            if (node != null) {
+                List<String> results = applyTemplate(null, template, node);
+                if (results != null) {
+                    if (results.get(0) == null) {
+                        results.set(0, htmlFile.getName());
+                    }
+                    System.out.println(String.join("\t", results));
+                }
+            }
+        } catch (SaxonApiException e) {
+            System.err.println("Failed to parse HTML from file " + htmlFile.getName() + " "
+                    + e.getMessage());            
+        }
     }
 }
