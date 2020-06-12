@@ -193,11 +193,17 @@ public class App implements Callable<Void> {
         if (js_rendering) {
             html = fetchWithNode(url);
         } else {
-            Connection.Response response = Jsoup.connect(url)
+            Connection myconn = Jsoup.connect(url)
                     .userAgent(
                             userAgent)
                     .validateTLSCertificates(validateCertificates)
-                    .method(Connection.Method.GET)
+                    .method(Connection.Method.GET);
+
+            //Remove the 1 MB limit on the downloaded size. Setting to 0 implies no limit.
+            myconn.request().maxBodySize(0);
+            //System.out.println("Max boxy size is set to " + myconn.request().maxBodySize());
+
+            Connection.Response response = myconn                    
                     .execute();
             html = response.bodyAsBytes();
         }
