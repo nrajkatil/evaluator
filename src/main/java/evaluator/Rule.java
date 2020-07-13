@@ -3,12 +3,15 @@ package evaluator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import net.sf.saxon.s9api.SaxonApiException;
 import net.sf.saxon.s9api.XPathCompiler;
 import net.sf.saxon.s9api.XPathSelector;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -44,7 +47,10 @@ public class Rule {
   @JsonProperty
   String xPath;
 
-  XPathSelector evaluator;
+  @JsonProperty
+  List<String> multipleXPaths = null;
+
+  List<Evaluator> evaluators = null;
 
   @JsonProperty("output_format")
   String outputFormat;
@@ -54,9 +60,10 @@ public class Rule {
         !Strings.isNullOrEmpty(name),
         "Name must be non-empty!");
 
-    Preconditions.checkArgument(
-        !Strings.isNullOrEmpty(xPath),
-        "xPath must be non-empty!");
+    boolean hasXPath = !Strings.isNullOrEmpty(xPath);
+    boolean hasMultipleXPaths = multipleXPaths != null && multipleXPaths.size() > 0;
+    Preconditions.checkArgument(hasXPath || hasMultipleXPaths, "Must either have xPath or multipleXPaths");
+    Preconditions.checkArgument(!(hasXPath && hasMultipleXPaths), "Cannot have xPath and multipleXPaths at the same time");
 
     Preconditions.checkArgument(
         !Strings.isNullOrEmpty(outputFormat),
@@ -70,10 +77,23 @@ public class Rule {
         "Name must be one of {" + String.join(", ", validNames) + "}");
     Preconditions.checkArgument(VALID_FORMATS.contains(outputFormat.toUpperCase()),
         "output_format must be one of {" + String.join(", ", VALID_FORMATS) + "}");
-    try {
-      evaluator = xPathCompiler.compile(xPath).load();
-    } catch (SaxonApiException e) {
-      throw new RuntimeException("Failed to compile xPath: " + xPath, e);
+
+
+    List<String> xpath_list = multipleXPaths;
+    if (hasXPath) {
+      xpath_list = ImmutableList.of(xPath);
+    }
+
+    evaluators = new ArrayList<>();
+    for (String xpath: xpath_list) {
+      Evaluator evaluator;
+      try {
+        XPathSelector eval = xPathCompiler.compile(xpath).load();
+        evaluator = new Evaluator(eval, xpath);
+      } catch (SaxonApiException e) {
+        throw new RuntimeException("Failed to compile xPath: " + xpath, e);
+      }
+      evaluators.add(evaluator);
     }
   }
 }

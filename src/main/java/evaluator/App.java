@@ -6,7 +6,6 @@ import static picocli.CommandLine.Parameters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import net.sf.saxon.functions.ConstantFunction;
 import net.sf.saxon.lib.Feature;
 import net.sf.saxon.s9api.Processor;
 import net.sf.saxon.s9api.SaxonApiException;
@@ -17,7 +16,11 @@ import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import picocli.CommandLine;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -233,35 +236,46 @@ public class App implements Callable<Void> {
     }
 
     List<String> applyTemplate(String url, Template template, XdmNode node) {
-        List<String> results = null;
-
+        List<String> templateResult = null;
 
         if (url == null || template.urlMatch.test(url)) {
-            results = new ArrayList<>();
-            results.add(url);
+            templateResult = new ArrayList<>();
+            templateResult.add(url);
             for (Rule rule : template.rules) {
-                XdmValue result;
-                try {
-                    rule.evaluator.setContextItem(node);
-                    result = rule.evaluator.evaluate();
-                } catch (SaxonApiException e) {
-                    System.err.println("Failed to evaluate XPath " + rule.xPath +
+                XdmValue ruleResult;
+
+                boolean success = false; // whether the current rule succeeds or not
+                for (Evaluator evaluator: rule.evaluators) {
+                    try {
+                        evaluator.setContextItem(node);
+                        ruleResult = evaluator.evaluate();
+                    } catch (SaxonApiException e) {
+                        System.err.println("Failed to evaluate XPath " + evaluator.getXPath() +
                             " on " + url + ":" + e.getMessage());
-                    results.add("");
-                    continue;
+                        break;
+                    }
+
+                    if (ruleResult.size() == 0) {
+                        continue;
+                    } else {
+                        if ("LIST_TEXT".equals(rule.outputFormat)) {
+                            templateResult.add(StreamSupport.stream(ruleResult.spliterator(), false)
+                                .map(item -> normalizeWhitespace(item.getStringValue()))
+                                .collect(Collectors.joining(",")));
+                        } else {
+                            templateResult.add(normalizeWhitespace(ruleResult.itemAt(0).getStringValue()));
+                        }
+                        success = true;
+                        break;
+                    }
                 }
-                if (result.size() == 0) {
-                    results.add("");
-                } else if ("LIST_TEXT".equals(rule.outputFormat)) {
-                    results.add(StreamSupport.stream(result.spliterator(), false)
-                            .map(item -> normalizeWhitespace(item.getStringValue()))
-                            .collect(Collectors.joining(",")));
-                } else if ("TEXT".equals(rule.outputFormat)) {
-                    results.add(normalizeWhitespace(result.itemAt(0).getStringValue()));
+                if (!success) {
+                    templateResult.add("");
                 }
+
             }
         }
-        return results;
+        return templateResult;
     }
 
     private String normalizeWhitespace(String input) {
