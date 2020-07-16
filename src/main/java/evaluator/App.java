@@ -40,7 +40,24 @@ import javax.xml.transform.stream.StreamSource;
         version = "0.1")
 public class App implements Callable<Void> {
 
-    private static final Processor processor = new Processor(false);
+    private static final Processor processor;
+    private static final XPathCompiler compiler;
+
+    static {
+        processor = new Processor(false);
+        processor.setConfigurationProperty(
+            Feature.SOURCE_PARSER_CLASS, "org.ccil.cowan.tagsoup.Parser");
+        processor.setConfigurationProperty(
+            Feature.ENTITY_RESOLVER_CLASS, "evaluator.NoOpEntityResolver");
+        processor.registerExtensionFunction(new TrimJsonMap());
+
+        compiler = processor.newXPathCompiler();
+        compiler.declareNamespace("", "http://www.w3.org/1999/xhtml");
+        compiler.declareNamespace("array", "http://www.w3.org/2005/xpath-functions/array");
+        compiler.declareNamespace("map", "http://www.w3.org/2005/xpath-functions/map");
+        compiler.declareNamespace("pin", "http://www.pinterest.com/");
+        compiler.setLanguageVersion("3.1");
+    }
 
     @Parameters(index = "0", description = "File containing sample URLs. One URL per line")
     private File inputFile;
@@ -123,10 +140,6 @@ public class App implements Callable<Void> {
 
 
     public static XdmNode buildNode(byte[] html) throws SaxonApiException {
-        processor.setConfigurationProperty(
-                Feature.SOURCE_PARSER_CLASS, "org.ccil.cowan.tagsoup.Parser");
-        processor.setConfigurationProperty(
-                Feature.ENTITY_RESOLVER_CLASS, "evaluator.NoOpEntityResolver");
         return processor.newDocumentBuilder().build(
                 new StreamSource(new ByteArrayInputStream(html)));
     }
@@ -285,9 +298,6 @@ public class App implements Callable<Void> {
     Template loadTemplate(File templateFile, String type) throws IOException {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         Template template = mapper.readValue(templateFile, Template.class);
-        XPathCompiler compiler = processor.newXPathCompiler();
-        compiler.declareNamespace("", "http://www.w3.org/1999/xhtml");
-        compiler.setLanguageVersion("3.1");
         template.validateAndInitialize(compiler, type);
         return template;
     }
