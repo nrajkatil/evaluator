@@ -18,7 +18,7 @@ public class AppTest {
   @Test
   public void loadTemplate() throws Exception {
     URL testTemplateURL = this.getClass().getResource("/test_template.yaml");
-    new App().loadTemplate(new File(testTemplateURL.toURI()));
+    new App().loadTemplate(new File(testTemplateURL.toURI()), "product");
   }
 
   @Test
@@ -28,11 +28,17 @@ public class AppTest {
       XdmNode node = App.buildNode(ByteStreams.toByteArray(testHTMLStream));
       App app = new App();
       URL testTemplateURL = this.getClass().getResource("/test_template.yaml");
-      Template template = app.loadTemplate(new File(testTemplateURL.toURI()));
+      Template template = app.loadTemplate(new File(testTemplateURL.toURI()), "product");
       List<String> result = app.applyTemplate(url, template, node);
       assertEquals(2, result.size());
       assertEquals(url, result.get(0));
       assertEquals("Men's Finder™ Rain Jacket", result.get(1).trim());
     }
+  }
+
+  @Test
+  public void templateWithInstallment() throws Exception {
+    URL testTemplateURL = this.getClass().getResource("/test_template_with_installment.yaml");
+    new App().loadTemplate(new File(testTemplateURL.toURI()), "product");
   }
 }

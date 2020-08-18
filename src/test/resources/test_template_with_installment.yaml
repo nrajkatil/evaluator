@@ -1,0 +1,16 @@
+pattern: ^http[s]?://www.walmart.com/.*
+domain: walmart.com
+name: walmart.com
+rules:
+  - name: price
+    xPath: //div[contains(@class, 'price')]/text()
+    output_format: TEXT
+  - name: installment_sale_price
+    xPath: //div[contains(@class, 'installment_sale_price')]/text()
+    output_format: TEXT
+  - name: number_of_installments
+    xPath: //div[contains(@class, 'number_of_installments')]/text()
+    output_format: TEXT
+  - name: installment_frequency
+    xPath: //div[contains(@class, 'installment_frequency')]/text()
+    output_format: TEXT
