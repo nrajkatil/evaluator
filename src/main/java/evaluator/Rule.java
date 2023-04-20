@@ -36,6 +36,7 @@ public class Rule {
             "is_item", "is_item_set", "variant_availability", "installment_sale_price", "number_of_installments", 
 	    "variant_urls", "variant_value_options", "variant_value_counts", "variant_num_dims", "variant_names", "variant_values", "variant_urls_base", "additional_video_links",
             "review_text", "review_score", "review_title", "review_date", "reviewer_name",
+	    "best_seller", "recommended_product", "new_arrival", "top_rated", "seasonal_promotion", "priority",
             "installment_frequency");
     VALID_TYPES = ImmutableMap.of(
         "general", VALID_GENERAL_NAMES,
